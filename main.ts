@@ -2,11 +2,11 @@
 /// <reference path="node_modules/utilsx/utils.ts" />
 /// <reference path="node_modules/eventsystemx/EventSystem.ts" />
 
-class Wire{
+class Wire<T>{
     lagms:number = 500
-    onDataArrived = new EventSystem<Packet>()
+    onDataArrived = new EventSystem<T>()
 
-    sendinput(packet:Packet){
+    sendinput(packet:T){
         if(Math.random() > 0.5){//packet loss
             setTimeout(() => {
                 this.onDataArrived.trigger(packet)
@@ -17,9 +17,14 @@ class Wire{
 
 enum Change{abs,rel}
 
-class Packet{
+class Packet2server{
     seq:number
     type:Change
+    value:number
+}
+
+class Packet2client{
+    seq:number
     value:number
 }
 
@@ -27,11 +32,12 @@ class Client{
     seqcurrent = 0
     pos = 0
     updateRateHz = 1
-    wire2server = new Wire()
-    uncofirmedPackets:Packet[] = []
+    wire2server = new Wire<Packet2server>()
+    wire2client = new Wire<Packet2client>()
+    uncofirmedPackets:Packet2server[] = []
 
     messageServer(){
-        var p = new Packet()
+        var p = new Packet2server()
         p.seq = this.seqcurrent++
         p.type = Change.rel
         p.value = 3
@@ -41,7 +47,7 @@ class Client{
 
 class Server{
     pos:number[] = []
-    packetBuffer:Packet[] = []
+    packetBuffer:Packet2server[] = []
     tickRateHz:number = 5
 
     processPackets(){
@@ -52,7 +58,9 @@ class Server{
     }
 
     messageClients(){
-
+        for(var client of clients){
+            client.wire2client.sendinput(new Packet2client())
+        }
     }
 }
 
@@ -68,6 +76,10 @@ for(var client of clients){
     setInterval(() => {
         client.messageServer()
     }, 1000 / client.updateRateHz)
+
+    client.wire2client.onDataArrived.listen(val => {
+
+    })
 }
 
 
