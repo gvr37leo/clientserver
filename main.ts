@@ -21,6 +21,7 @@ class Packet2server{
     seq:number
     type:Change
     value:number
+    absvalue:number//after the value prop has been processed
 }
 
 class Packet2client{
@@ -34,7 +35,7 @@ class Client{
     updateRateHz = 1
     wire2server = new Wire<Packet2server>()
     wire2client = new Wire<Packet2client>()
-    uncofirmedPackets:Packet2server[] = []
+    unconfirmedPackets:Packet2server[] = []
 
     messageServer(){
         var p = new Packet2server()
@@ -42,6 +43,35 @@ class Client{
         p.type = Change.rel
         p.value = 3
         this.wire2server.sendinput(p)
+    }
+
+    processPacket(packet:Packet2client){
+        for(var i = 0; i < this.unconfirmedPackets.length; i++){
+            var current = this.unconfirmedPackets[i]
+            if(current.seq == packet.seq){
+                if(current.absvalue == packet.value){
+                    this.unconfirmedPackets.splice(0,i)
+                }else{
+                    this.unconfirmedPackets.splice(0,i)
+                    current.absvalue = packet.value
+                    this.recalcPackets()
+                    //some kind of mismatch happenend, recalculate absvalue of following packages and final value
+                }
+                break
+            }
+        }
+    }
+
+    recalcPackets(){
+        for(var i = 1; i < this.unconfirmedPackets.length; i++){
+            var prev = this.unconfirmedPackets[i - 1]
+            var cur = this.unconfirmedPackets[i]
+            if(cur.type == Change.abs){
+                break;//from here no desparity can be predicted
+            }else if(cur.type == Change.rel){
+                cur.absvalue = prev.absvalue + cur.value
+            }
+        }
     }
 }
 
@@ -73,23 +103,28 @@ var clients = [clientA,clientB]
 
 //client
 for(var client of clients){
+    //send
     setInterval(() => {
         client.messageServer()
     }, 1000 / client.updateRateHz)
 
-    client.wire2client.onDataArrived.listen(val => {
-
+    //listen
+    client.wire2client.onDataArrived.listen(e => {
+        client.processPacket(e.val)
     })
 }
 
 
 
 //server
+//listen
 for(var client of clients){
     client.wire2server.onDataArrived.listen(e => {
         server.packetBuffer.push(e.val)
     })
 }
+
+//process and send
 setInterval(() => {
     server.processPackets()
 },1000 / server.tickRateHz)
