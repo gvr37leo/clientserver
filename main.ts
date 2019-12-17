@@ -1,7 +1,8 @@
 /// <reference path="node_modules/vectorx/vector.ts" />
 /// <reference path="node_modules/utilsx/utils.ts" />
 /// <reference path="node_modules/eventsystemx/EventSystem.ts" />
-
+// https://gabrielgambetta.com/client-side-prediction-live-demo.html
+// https://www.youtube.com/watch?v=W3aieHjyNvw
 class Wire<T>{
     lagms:number = 500
     onDataArrived = new EventSystem<T>()
