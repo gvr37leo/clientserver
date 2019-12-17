@@ -15,6 +15,56 @@
     </style>
 </head>
 <body>
+
+    <div>
+        
+    </div>
+
+    <div>
+        server
+        <input id="server" type="range">
+    </div>
+
+    <div>
+        clients
+
+        <div id="clientcontainer">
+            <div>
+                <div>
+                    <label for="prediction">prediction</label>
+                    <input id="prediction" type="checkbox">
+                </div>
+
+                <div>
+                    <label for="reconciliation">reconciliation</label>
+                    <input id="reconciliation" type="checkbox">
+                </div>
+
+                <div>
+                    <label for="interpolation">interpolation</label>
+                    <input id="interpolation" type="checkbox">
+                </div>
+                <div>
+                    <button id="sendsuccess">send succesfull packet</button>
+                </div>
+                <div>
+                    <button id="sendfail">send dropped packet</button>
+                </div>
+                <div>
+                    <label for="lag">lag</label>
+                    <input id="lag" type="number">
+                </div>
+                <div>
+                    <input id="val" type="range">
+                </div>
+                <div>
+                    <label for="unconfirmedpackets">unconfirmedpackets</label>
+                    <input id="unconfirmedpackets" type="number">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="package.js"></script>
 </body>
 </html>

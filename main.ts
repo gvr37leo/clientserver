@@ -7,7 +7,7 @@ class Wire<T>{
     onDataArrived = new EventSystem<T>()
 
     sendinput(packet:T){
-        if(Math.random() > 0.5){//packet loss
+        if(Math.random() > 0){//packet loss
             setTimeout(() => {
                 this.onDataArrived.trigger(packet)
             }, this.lagms)
@@ -18,44 +18,61 @@ class Wire<T>{
 enum Change{abs,rel}
 
 class Packet2server{
-    seq:number
+    version:number
     type:Change
     value:number
     absvalue:number//after the value prop has been processed
+    clientid:number
 }
 
 class Packet2client{
-    seq:number
+    version:number
     value:number
 }
 
 class Client{
-    seqcurrent = 0
+    versioncurrent = 0
     pos = 0
-    updateRateHz = 1
+    updateRateHz = 5
     wire2server = new Wire<Packet2server>()
     wire2client = new Wire<Packet2client>()
     unconfirmedPackets:Packet2server[] = []
+    
+    constructor(public clientid:number){
+
+    }
+
+    getPredictedPosition(){
+        if(this.unconfirmedPackets.length == 0){
+            return this.pos
+        }else{
+            return last(this.unconfirmedPackets).absvalue    
+        }
+    }
 
     messageServer(){
-        var p = new Packet2server()
-        p.seq = this.seqcurrent++
-        p.type = Change.rel
-        p.value = 3
-        this.wire2server.sendinput(p)
+        var packet = new Packet2server()
+        packet.version = this.versioncurrent++
+        packet.type = Change.rel
+        packet.value = 3
+        packet.clientid = this.clientid
+        packet.absvalue = this.getPredictedPosition() + packet.value
+        this.unconfirmedPackets.push(packet)
+        this.wire2server.sendinput(packet)
     }
 
     processPacket(packet:Packet2client){
         for(var i = 0; i < this.unconfirmedPackets.length; i++){
             var current = this.unconfirmedPackets[i]
-            if(current.seq == packet.seq){
+            if(current.version == packet.version){
                 if(current.absvalue == packet.value){
-                    this.unconfirmedPackets.splice(0,i)
+                    this.unconfirmedPackets.splice(0,i + 1)
                 }else{
-                    this.unconfirmedPackets.splice(0,i)
+                    this.unconfirmedPackets.splice(0,i + 1)
                     current.absvalue = packet.value
                     this.recalcPackets()
                     //some kind of mismatch happenend, recalculate absvalue of following packages and final value
+                    //happens when other clients touch your data or when client side unpredictable events cause data to change
                 }
                 break
             }
@@ -75,38 +92,79 @@ class Client{
     }
 }
 
-class Server{
-    pos:number[] = []
+class ClientRegistration{
     packetBuffer:Packet2server[] = []
-    tickRateHz:number = 5
+
+    constructor(public clientid:number){
+
+    }
+}
+
+class DBVal{
+    val:number
+    version:number
+}
+
+class ServerDB{
+    posA:DBVal
+    posB:DBVal
+}
+
+class Server{
+    db:ServerDB
+    clientrgs:ClientRegistration[] = []
+    tickRateHz:number = 1
 
     processPackets(){
-        for(var i = 0; i < this.packetBuffer.length; i++){
-            var packet = packet
+        for(var client of this.clientrgs){
+            for(var i = 0; i < client.packetBuffer.length; i++){
+                var packet = client.packetBuffer[i]
+
+                //check for dropped packets
+                //and do something if it happens
+
+                if(packet.type == Change.abs){
+                    client.pos = packet.value
+                }else if(packet.type == Change.rel){
+                    client.pos += packet.value
+                }
+                client.version = packet.version
+            }
+            client.packetBuffer.splice(0,client.packetBuffer.length)
         }
+        
         this.messageClients()
     }
 
     messageClients(){
         for(var client of clients){
-            client.wire2client.sendinput(new Packet2client())
+            var crgs = this.clientrgs.find(cr => cr.clientid == client.clientid)
+            var packet = new Packet2client()
+            packet.value = crgs.pos
+            packet.version = crgs.version
+            client.wire2client.sendinput(packet)
         }
     }
 }
 
 
-var clientA = new Client()
-var clientB = new Client()
+var clientA = new Client(0)
+var clientB = new Client(1)
 
 var server = new Server()
-var clients = [clientA,clientB]
+server.clientrgs = [new ClientRegistration(0)]
+var clients = [clientA]//,clientB
 
 //client
 for(var client of clients){
     //send
-    setInterval(() => {
-        client.messageServer()
-    }, 1000 / client.updateRateHz)
+    // setInterval(() => {
+    //     client.messageServer()
+    // }, 1000 / client.updateRateHz)
+    client.messageServer()
+    client.messageServer()
+    client.messageServer()
+    client.messageServer()
 
     //listen
     client.wire2client.onDataArrived.listen(e => {
@@ -120,14 +178,18 @@ for(var client of clients){
 //listen
 for(var client of clients){
     client.wire2server.onDataArrived.listen(e => {
-        server.packetBuffer.push(e.val)
+        server.clientrgs.find(cr => cr.clientid == client.clientid).packetBuffer.push(e.val)
     })
 }
 
 //process and send
-setInterval(() => {
+// setInterval(() => {
+//     server.processPackets()
+// },1000 / server.tickRateHz)
+setTimeout(() => {
     server.processPackets()
-},1000 / server.tickRateHz)
+},1000)
+
 
 
 
