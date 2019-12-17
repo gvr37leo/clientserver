@@ -154,7 +154,7 @@ var clientB = new Client(1)
 
 var server = new Server()
 server.clientrgs = [new ClientRegistration(0)]
-var clients = [clientA]//,clientB
+var clients = [clientA,clientB]//
 
 //client
 for(var client of clients){
@@ -191,8 +191,14 @@ setTimeout(() => {
     server.processPackets()
 },1000)
 
+var clientcontainer = document.querySelector('#clientcontainer')
+var clienttemplate = clientcontainer.firstElementChild
+clienttemplate.remove()
 
-
+for(var client of clients){
+    clientcontainer.append(clienttemplate.cloneNode(true))
+    
+}
 
 
 
