@@ -22,30 +22,35 @@ class Packet2server{
     version:number
     type:Change
     value:number
+    field:string
     absvalue:number//after the value prop has been processed
     clientid:number
 }
 
-class Packet2client{
-    version:number
+class Entity{
+    id:number
     value:number
+    lastprocessedInput:number
+}
+
+class Packet2client{
+    entities:Entity[]
 }
 
 class Client{
     versioncurrent = 0
-    pos = 0
     updateRateHz = 5
     wire2server = new Wire<Packet2server>()
     wire2client = new Wire<Packet2client>()
     unconfirmedPackets:Packet2server[] = []
     
-    constructor(public clientid:number){
+    constructor(public id:number){
 
     }
 
     getPredictedPosition(){
         if(this.unconfirmedPackets.length == 0){
-            return this.pos
+            // return this.pos
         }else{
             return last(this.unconfirmedPackets).absvalue    
         }
@@ -56,28 +61,41 @@ class Client{
         packet.version = this.versioncurrent++
         packet.type = Change.rel
         packet.value = 3
-        packet.clientid = this.clientid
+        packet.field = 'posA'
+        packet.clientid = this.id
         packet.absvalue = this.getPredictedPosition() + packet.value
         this.unconfirmedPackets.push(packet)
         this.wire2server.sendinput(packet)
     }
 
     processPacket(packet:Packet2client){
-        for(var i = 0; i < this.unconfirmedPackets.length; i++){
-            var current = this.unconfirmedPackets[i]
-            if(current.version == packet.version){
-                if(current.absvalue == packet.value){
-                    this.unconfirmedPackets.splice(0,i + 1)
-                }else{
-                    this.unconfirmedPackets.splice(0,i + 1)
-                    current.absvalue = packet.value
-                    this.recalcPackets()
-                    //some kind of mismatch happenend, recalculate absvalue of following packages and final value
-                    //happens when other clients touch your data or when client side unpredictable events cause data to change
+        for(var entity of packet.entities){
+            if(entity.id == client.id){
+                //self prediction/reconciliation
+
+                for(var i = 0; i < this.unconfirmedPackets.length; i++){
+                    var current = this.unconfirmedPackets[i]
+                    packet.entities
+                    if(current.version == entity.lastprocessedInput){
+                        if(current.absvalue == entity.value){
+                            this.unconfirmedPackets.splice(0,i + 1)
+                        }else{
+                            this.unconfirmedPackets.splice(0,i + 1)
+                            current.absvalue = entity.value
+                            this.recalcPackets()
+                            //some kind of mismatch happenend, recalculate absvalue of following packages and final value
+                            //happens when other clients touch your data or when client side unpredictable events cause data to change
+                        }
+                        break
+                    }
                 }
-                break
+
+            }else{
+                //other interpolation
             }
         }
+
+        
     }
 
     recalcPackets(){
@@ -94,57 +112,51 @@ class Client{
 }
 
 class ClientRegistration{
-    packetBuffer:Packet2server[] = []
-
-    constructor(public clientid:number){
+    constructor(public clientid:number, public client:Client){
 
     }
 }
 
-class DBVal{
-    val:number
-    version:number
-}
-
-class ServerDB{
-    posA:DBVal
-    posB:DBVal
-}
 
 class Server{
-    db:ServerDB
-    clientrgs:ClientRegistration[] = []
+    packetBuffer:Packet2server[] = []
+    entitys:Entity[] = []
+    clients:Client[] = []
     tickRateHz:number = 1
 
     processPackets(){
-        for(var client of this.clientrgs){
-            for(var i = 0; i < client.packetBuffer.length; i++){
-                var packet = client.packetBuffer[i]
 
-                //check for dropped packets
-                //and do something if it happens
+        for(var packet of this.packetBuffer){
+            var client = this.clients.find(c => c.id == packet.clientid)
+                
+            //check for dropped packets
+            //and do something if it happens
 
-                if(packet.type == Change.abs){
-                    client.pos = packet.value
-                }else if(packet.type == Change.rel){
-                    client.pos += packet.value
-                }
-                client.version = packet.version
+            if(packet.type == Change.abs){
+                client.client.val = packet.value
+            }else if(packet.type == Change.rel){
+                field.val += packet.value
             }
-            client.packetBuffer.splice(0,client.packetBuffer.length)
+            field.version = packet.version
+                
         }
+        this.packetBuffer.splice(0,this.packetBuffer.length)
+        
         
         this.messageClients()
     }
 
     messageClients(){
         for(var client of clients){
-            var crgs = this.clientrgs.find(cr => cr.clientid == client.clientid)
             var packet = new Packet2client()
-            packet.value = crgs.pos
-            packet.version = crgs.version
+
+            packet.entities = this.entitys.map(e => )
             client.wire2client.sendinput(packet)
         }
+    }
+
+    connect(client:Client){
+        this.clients.push(client)
     }
 }
 
@@ -153,7 +165,7 @@ var clientA = new Client(0)
 var clientB = new Client(1)
 
 var server = new Server()
-server.clientrgs = [new ClientRegistration(0)]
+server.clients = [new ClientRegistration(0)]
 var clients = [clientA,clientB]//
 
 //client
@@ -179,7 +191,7 @@ for(var client of clients){
 //listen
 for(var client of clients){
     client.wire2server.onDataArrived.listen(e => {
-        server.clientrgs.find(cr => cr.clientid == client.clientid).packetBuffer.push(e.val)
+        server.packetBuffer.push(e.val)
     })
 }
 
