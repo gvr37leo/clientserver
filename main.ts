@@ -7,53 +7,66 @@
 // https://gabrielgambetta.com/client-side-prediction-live-demo.html
 // https://www.youtube.com/watch?v=W3aieHjyNvw
 
-var clientA = new Client(0)
-var clientB = new Client(1)
+//clientside
+//prediction
+// apply inputs even before server confirms it
+//reconciliation
+// instead of overwriting current state with result from server replay all unconfirmed inputs from last acknowlegd input
 
-var server = new Server()
+let clientA = new Client(0)
+let clientB = new Client(1)
+
+let server = new Server()
 server.connect(clientA)
 server.connect(clientB)
 
 //client
-for(var client of server.clients){
+for(let client of server.clients){
     //send
     // setInterval(() => {
     //     client.messageServer()
     // }, 1000 / client.updateRateHz)
-    client.messageServer()
-    client.messageServer()
-    client.messageServer()
-    client.messageServer()
+
 
     //listen
     client.wire2client.onDataArrived.listen(e => {
-        client.processPacket(e.val)
+        client.packetbuffer.push(e.val)
+        // client.processPackets()
+        client.updateUI()
     })
 }
 
 //server
 //listen
-for(var client of server.clients){
+for(let client of server.clients){
     client.wire2server.onDataArrived.listen(e => {
         server.packetBuffer.push(e.val)
     })
 }
 
 //process and send
-setTimeout(() => {
-    server.processPackets()
-},1000 / server.tickRateHz)
+// setTimeout(() => {
+//     server.processPackets()
+// },1000)
 
 
 //ui
-var clientcontainer = document.querySelector('#clientcontainer')
-var clienttemplate = clientcontainer.firstElementChild
+let clientcontainer = document.querySelector('#clientcontainer')
+let clienttemplate = clientcontainer.firstElementChild
 clienttemplate.remove()
 
-for(var client of server.clients){
-    clientcontainer.append(clienttemplate.cloneNode(true))
-    
+for(let client of server.clients){
+    client.element = clienttemplate.cloneNode(true) as any
+    clientcontainer.append(client.element)
 }
 
+//testing
+
+clientA.messageServer(3,0)
+clientB.messageServer(3,0)
+server.processPackets()
+server.messageClients()
+clientA.messageServer(3,0)
+clientA.processPackets()
 
 

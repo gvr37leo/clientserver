@@ -1,17 +1,43 @@
 enum Change{abs,rel}
 
 class Packet2server{
-    version:number
-    type:Change
-    value:number
-    absvalue:number//after the value prop has been processed
-    clientid:number
+    constructor(
+        public version:number,
+        public type:Change,
+        public value:number,
+        public absvalue:number,
+        public clientid:number,
+        public entityid:number,
+    ){
+
+    }
 }
 
 class Entity{
-    id:number
-    value:number
-    lastprocessedInput:number
+
+    constructor(
+        public id:number,
+        public value:number,
+        public lastprocessedInput:number,
+    ){
+
+    }
+
+    applyinput(input:Packet2server){
+        if(input.type == Change.abs){
+            this.value = input.value
+        }else if(input.type == Change.rel){
+            this.value += input.value
+        }
+        if(input.version != this.lastprocessedInput){
+            //mismatch happened, multiple clients updated this entity simultaneously
+        }
+        this.lastprocessedInput++
+    }
+
+    copy(){
+        return new Entity(this.id,this.value,this.lastprocessedInput)
+    }
 }
 
 class Server{
@@ -22,31 +48,28 @@ class Server{
 
     processPackets(){
         while(this.packetBuffer.length > 0){
-            var packet =this.packetBuffer.shift()
-            var client = this.clients.find(c => c.id == packet.clientid)
-            var entity = this.entitys.find(e => e.id == packet.clientid)
-            //check for dropped packets
-            //and do something if it happens
-
-            if(packet.type == Change.abs){
-                entity.value = packet.value
-            }else if(packet.type == Change.rel){
-                entity.value += packet.value
+            let packet =this.packetBuffer.shift()
+            // let client = this.clients.find(c => c.id == packet.clientid)
+            let entity = this.entitys.find(e => e.id == packet.entityid)
+            if(entity == null){
+                entity = new Entity(packet.entityid, packet.value, packet.version)
+                this.entitys.push(entity)
+            }else{
+                //check for dropped packets
+                //and do something if it happens maybe duplicate last send input
+                entity.applyinput(packet)
             }
-            entity.lastprocessedInput = packet.version
-                
         }
-        this.packetBuffer.splice(0,this.packetBuffer.length)
         
-        
-        this.messageClients()
     }
 
-    messageClients(){
-        for(var client of this.clients){
-            var packet = new Packet2client()
 
-            packet.entities = this.entitys.map(e => e)
+
+    messageClients(){
+        for(let client of this.clients){
+            let packet = new Packet2client()
+            //optionally filter packets
+            packet.entities = this.entitys.map(e => e.copy())
             client.wire2client.sendinput(packet)
         }
     }
