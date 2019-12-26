@@ -2,9 +2,8 @@ enum Change{abs,rel}
 
 class Packet2server{
     constructor(
-        public version:number,
-        public type:Change,
-        public value:number,
+        public timestamp:number,
+        public relvalue:number,
         public absvalue:number,
         public clientid:number,
         public entityid:number,
@@ -15,28 +14,38 @@ class Packet2server{
 
 class Entity{
 
+    unconfirmedPackets:Packet2server[] = []
     constructor(
         public id:number,
         public value:number,
-        public lastprocessedInput:number,
+        public lastprocessedInputTimeStamp:number,
     ){
 
     }
 
+    recalcPackets(){
+        for(let i = 1; i < this.unconfirmedPackets.length; i++){
+            let prev = this.unconfirmedPackets[i - 1]
+            let cur = this.unconfirmedPackets[i]
+            cur.absvalue = prev.absvalue + cur.relvalue
+        }
+    }
+
+    getPredictedPosition(){
+        if(this.unconfirmedPackets.length == 0){
+            return this.value
+        }else{
+            return last(this.unconfirmedPackets).absvalue    
+        }
+    }
+
     applyinput(input:Packet2server){
-        if(input.type == Change.abs){
-            this.value = input.value
-        }else if(input.type == Change.rel){
-            this.value += input.value
-        }
-        if(input.version != this.lastprocessedInput){
-            //mismatch happened, multiple clients updated this entity simultaneously
-        }
-        this.lastprocessedInput++
+        this.value += input.relvalue
+        this.lastprocessedInputTimeStamp = input.timestamp
     }
 
     copy(){
-        return new Entity(this.id,this.value,this.lastprocessedInput)
+        return new Entity(this.id,this.value,this.lastprocessedInputTimeStamp)
     }
 }
 
@@ -48,11 +57,11 @@ class Server{
 
     processPackets(){
         while(this.packetBuffer.length > 0){
-            let packet =this.packetBuffer.shift()
+            let packet = this.packetBuffer.shift()
             // let client = this.clients.find(c => c.id == packet.clientid)
             let entity = this.entitys.find(e => e.id == packet.entityid)
             if(entity == null){
-                entity = new Entity(packet.entityid, packet.value, packet.version)
+                entity = new Entity(packet.entityid, packet.relvalue, packet.timestamp)
                 this.entitys.push(entity)
             }else{
                 //check for dropped packets

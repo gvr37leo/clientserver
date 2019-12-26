@@ -15,6 +15,9 @@
 
 let clientA = new Client(0)
 let clientB = new Client(1)
+var testentity = new Entity(0,0,0)
+clientA.entitys = [testentity]
+clientB.entitys = [testentity]
 
 let server = new Server()
 server.connect(clientA)
