@@ -22,7 +22,7 @@ class Client{
 
     messageServer(val:number,entityid:number){
         var entity = this.entitys.find(e => e.id == entityid)
-        let packet = new Packet2server(Date.now(),val,entity.getPredictedPosition() + val,this.id,entityid)
+        let packet = new Packet2server(fakeclock(),val,entity.getPredictedPosition() + val,this.id,entityid)
         this.sendPacket(packet)
     }
 
@@ -37,13 +37,18 @@ class Client{
             let packet = this.packetbuffer.shift()
             for(let serverentity of packet.entities){
                 var localentity = this.entitys.find(e => e.id == serverentity.id)
+                if(localentity == null){
+                    localentity = serverentity.copy()
+                    this.entitys.push(localentity)
+                }
                 localentity.value = serverentity.value
                 //self prediction/reconciliation
 
                 let i = localentity.unconfirmedPackets.findIndex(up => up.timestamp > serverentity.lastprocessedInputTimeStamp)
                 
                 if(i == -1){
-                    //
+                    //all the way up to date
+                    localentity.unconfirmedPackets.splice(0,localentity.unconfirmedPackets.length)
                 }else{
                     localentity.unconfirmedPackets.splice(0,i)
                     let oldestunconfirmedpacket = first(localentity.unconfirmedPackets)
@@ -76,7 +81,8 @@ class Client{
         reconciliation.checked = this.reconciliation
         interpolation.checked = this.itnerpolation
         lag.valueAsNumber = this.wire2client.lagms
-        // value.valueAsNumber = this.getPredictedPosition()
-        // unconfirmedPackets.valueAsNumber = this.unconfirmedPackets.length
+        var ownentity = this.entitys[this.id]
+        value.valueAsNumber = ownentity.getPredictedPosition()
+        unconfirmedPackets.valueAsNumber = ownentity.unconfirmedPackets.length
     }
 }

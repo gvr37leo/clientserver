@@ -12,12 +12,15 @@
 // apply inputs even before server confirms it
 //reconciliation
 // instead of overwriting current state with result from server replay all unconfirmed inputs from last acknowlegd input
-
+var fakeclockcounter = 0
+function fakeclock(){
+    return fakeclockcounter
+}
+var startuptimestamp = fakeclock()
 let clientA = new Client(0)
 let clientB = new Client(1)
-var testentity = new Entity(0,0,0)
-clientA.entitys = [testentity]
-clientB.entitys = [testentity]
+clientA.entitys = [new Entity(0,0,0)]
+clientB.entitys = [new Entity(0,0,0),new Entity(1,0,0)]
 
 let server = new Server()
 server.connect(clientA)
@@ -26,15 +29,17 @@ server.connect(clientB)
 //client
 for(let client of server.clients){
     //send
-    // setInterval(() => {
-    //     client.messageServer()
-    // }, 1000 / client.updateRateHz)
+    setInterval(() => {
+        var target = (<HTMLInputElement>client.element.querySelector('#val')).valueAsNumber
+        var current = client.entitys[client.id].getPredictedPosition()
+        client.messageServer(to(current,target), client.id)
+    }, 1000 / client.updateRateHz)
 
 
     //listen
     client.wire2client.onDataArrived.listen(e => {
         client.packetbuffer.push(e.val)
-        // client.processPackets()
+        client.processPackets()
         client.updateUI()
     })
 }
@@ -47,10 +52,12 @@ for(let client of server.clients){
     })
 }
 
-//process and send
-// setTimeout(() => {
-//     server.processPackets()
-// },1000)
+// process and send
+setInterval(() => {
+    server.processPackets()
+    server.messageClients()
+    server.updateUI()
+},1000 / server.tickRateHz)
 
 
 //ui
@@ -62,14 +69,22 @@ for(let client of server.clients){
     client.element = clienttemplate.cloneNode(true) as any
     clientcontainer.append(client.element)
 }
+server.element = document.querySelector('#server')
 
 //testing
+// clientA.messageServer(3,0)
+// fakeclockcounter++
+// clientB.messageServer(3,0)
+// fakeclockcounter++
+// clientB.messageServer(8,1)
+// server.processPackets()
+// server.messageClients()
+// clientA.messageServer(3,0)
 
-clientA.messageServer(3,0)
-clientB.messageServer(3,0)
-server.processPackets()
-server.messageClients()
-clientA.messageServer(3,0)
-clientA.processPackets()
+// clientA.processPackets()
+// clientB.processPackets()
 
+// server.updateUI()
+// clientA.updateUI()
+// clientB.updateUI()
 

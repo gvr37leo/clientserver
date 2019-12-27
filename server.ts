@@ -53,7 +53,8 @@ class Server{
     packetBuffer:Packet2server[] = []
     entitys:Entity[] = []
     clients:Client[] = []
-    tickRateHz:number = 1
+    tickRateHz:number = 20
+    element: HTMLElement
 
     processPackets(){
         while(this.packetBuffer.length > 0){
@@ -72,8 +73,6 @@ class Server{
         
     }
 
-
-
     messageClients(){
         for(let client of this.clients){
             let packet = new Packet2client()
@@ -86,4 +85,28 @@ class Server{
     connect(client:Client){
         this.clients.push(client)
     }
+
+    updateUI(){
+        let tickrate = this.element.querySelector('#tickrate') as HTMLInputElement
+        let vala = this.element.querySelector('#vala') as HTMLInputElement
+        let timestampa = this.element.querySelector('#timestampa') as HTMLInputElement
+        let valb = this.element.querySelector('#valb') as HTMLInputElement
+        let timestampb = this.element.querySelector('#timestampb') as HTMLInputElement
+
+        tickrate.valueAsNumber = this.tickRateHz
+        if(this.entitys[0]){
+            vala.valueAsNumber = this.entitys[0].getPredictedPosition()
+            timestampa.valueAsNumber = formatTime(this.entitys[0].lastprocessedInputTimeStamp)
+        }
+        if(this.entitys[1]){
+            valb.valueAsNumber = this.entitys[1].getPredictedPosition()
+            timestampb.valueAsNumber = formatTime(this.entitys[1].lastprocessedInputTimeStamp)
+        }
+    }
+
+    
+}
+
+function formatTime(time){
+    return to(startuptimestamp, time)
 }
