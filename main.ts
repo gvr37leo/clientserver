@@ -38,7 +38,11 @@ for(let client of server.clients){
     clientcontainer.append(client.element)
 }
 server.element = document.querySelector('#server')
-
+server.element.querySelector('#updateclients').addEventListener('click', () => {
+    server.processPackets()
+    server.messageClients()
+    server.updateUI()
+})
 //client
 for(let client of server.clients){
     //send
@@ -57,8 +61,11 @@ for(let client of server.clients){
     //listen
     client.wire2client.onDataArrived.listen(e => {
         client.packetbuffer.push(e.val)
+        var hasupdates = e.val.entities.some(e => e.unconfirmedPackets.length > 0)
         client.processPackets()
-        client.updateUI()
+        if(hasupdates){
+            client.updateUI()
+        }
     })
 }
 
@@ -71,11 +78,11 @@ for(let client of server.clients){
 }
 
 // process and send
-setInterval(() => {
-    server.processPackets()
-    server.messageClients()
-    server.updateUI()
-},1000 / server.tickRateHz)
+// setInterval(() => {
+//     server.processPackets()
+//     server.messageClients()
+//     server.updateUI()
+// },1000)
 
 
 
