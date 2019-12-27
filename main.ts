@@ -12,6 +12,8 @@
 // apply inputs even before server confirms it
 //reconciliation
 // instead of overwriting current state with result from server replay all unconfirmed inputs from last acknowlegd input
+
+
 var fakeclockcounter = 0
 function fakeclock(){
     return fakeclockcounter
@@ -26,14 +28,30 @@ let server = new Server()
 server.connect(clientA)
 server.connect(clientB)
 
+//ui
+let clientcontainer = document.querySelector('#clientcontainer')
+let clienttemplate = clientcontainer.firstElementChild
+clienttemplate.remove()
+
+for(let client of server.clients){
+    client.element = clienttemplate.cloneNode(true) as any
+    clientcontainer.append(client.element)
+}
+server.element = document.querySelector('#server')
+
 //client
 for(let client of server.clients){
     //send
-    setInterval(() => {
-        var target = (<HTMLInputElement>client.element.querySelector('#val')).valueAsNumber
-        var current = client.entitys[client.id].getPredictedPosition()
-        client.messageServer(to(current,target), client.id)
-    }, 1000 / client.updateRateHz)
+
+    client.element.querySelector('#sendsuccess').addEventListener('click', () => {
+        client.messageServer(3, client.id)
+        client.updateUI()
+    })
+    // setInterval(() => {
+    //     var target = (<HTMLInputElement>client.element.querySelector('#val')).valueAsNumber
+    //     var current = client.entitys[client.id].getPredictedPosition()
+    //     client.messageServer(to(current,target), client.id)
+    // }, 1000 / client.updateRateHz)
 
 
     //listen
@@ -60,16 +78,7 @@ setInterval(() => {
 },1000 / server.tickRateHz)
 
 
-//ui
-let clientcontainer = document.querySelector('#clientcontainer')
-let clienttemplate = clientcontainer.firstElementChild
-clienttemplate.remove()
 
-for(let client of server.clients){
-    client.element = clienttemplate.cloneNode(true) as any
-    clientcontainer.append(client.element)
-}
-server.element = document.querySelector('#server')
 
 //testing
 // clientA.messageServer(3,0)

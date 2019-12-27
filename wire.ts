@@ -1,8 +1,8 @@
 class Wire<T>{
-    lagms:number = 500
+    lagms:number = 250
     onDataArrived = new EventSystem<T>()
     packetlossrate = 0
-    insant = true
+    insant = false
 
     sendinput(packet:T){
         if(Math.random() > this.packetlossrate){//packet loss
