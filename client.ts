@@ -22,7 +22,7 @@ class Client{
 
     messageServer(val:number,entityid:number){
         var entity = this.entitys.find(e => e.id == entityid)
-        let packet = new Packet2server(fakeclock(),val,entity.getPredictedPosition() + val,this.id,entityid)
+        let packet = new Packet2server(getClock(),val,entity.getPredictedPosition() + val,this.id,entityid)
         this.sendPacket(packet)
     }
 

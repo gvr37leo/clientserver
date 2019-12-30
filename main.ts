@@ -4,6 +4,8 @@
 /// <reference path="client.ts" />
 /// <reference path="server.ts" />
 /// <reference path="wire.ts" />
+/// <reference path="utils.ts" />
+
 // https://gabrielgambetta.com/client-side-prediction-live-demo.html
 // https://www.youtube.com/watch?v=W3aieHjyNvw
 
@@ -14,11 +16,11 @@
 // instead of overwriting current state with result from server replay all unconfirmed inputs from last acknowlegd input
 
 
-var fakeclockcounter = 0
-function fakeclock(){
-    return fakeclockcounter
+var clock = 0
+function getClock(){
+    return Date.now()
 }
-var startuptimestamp = fakeclock()
+var startuptimestamp = getClock()
 let clientA = new Client(0)
 let clientB = new Client(1)
 clientA.entitys = [new Entity(0,0,0)]
@@ -38,11 +40,8 @@ for(let client of server.clients){
     clientcontainer.append(client.element)
 }
 server.element = document.querySelector('#server')
-server.element.querySelector('#updateclients').addEventListener('click', () => {
-    server.processPackets()
-    server.messageClients()
-    server.updateUI()
-})
+server.generateUI()
+
 //client
 for(let client of server.clients){
     //send
@@ -51,6 +50,7 @@ for(let client of server.clients){
         client.messageServer(3, client.id)
         client.updateUI()
     })
+    client.updateUI()
     // setInterval(() => {
     //     var target = (<HTMLInputElement>client.element.querySelector('#val')).valueAsNumber
     //     var current = client.entitys[client.id].getPredictedPosition()
@@ -61,11 +61,8 @@ for(let client of server.clients){
     //listen
     client.wire2client.onDataArrived.listen(e => {
         client.packetbuffer.push(e.val)
-        var hasupdates = e.val.entities.some(e => e.unconfirmedPackets.length > 0)
         client.processPackets()
-        if(hasupdates){
-            client.updateUI()
-        }
+        client.updateUI()
     })
 }
 
@@ -73,9 +70,11 @@ for(let client of server.clients){
 //listen
 for(let client of server.clients){
     client.wire2server.onDataArrived.listen(e => {
-        server.packetBuffer.push(e.val)
+        server.addpacket2buffer(e.val)
+        server.generateUI()
     })
 }
+server.generateUI()
 
 // process and send
 // setInterval(() => {

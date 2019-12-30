@@ -55,22 +55,29 @@ class Server{
     clients:Client[] = []
     tickRateHz:number = 20
     element: HTMLElement
+    tickrateel: HTMLInputElement
+    updateclientsel: HTMLElement
+    entitycontainerel: HTMLElement
+    packetbufferel: HTMLInputElement
 
     processPackets(){
         while(this.packetBuffer.length > 0){
             let packet = this.packetBuffer.shift()
             // let client = this.clients.find(c => c.id == packet.clientid)
             let entity = this.entitys.find(e => e.id == packet.entityid)
-            if(entity == null){
-                entity = new Entity(packet.entityid, packet.relvalue, packet.timestamp)
-                this.entitys.push(entity)
-            }else{
-                //check for dropped packets
-                //and do something if it happens maybe duplicate last send input
-                entity.applyinput(packet)
-            }
+            //check for dropped packets
+            //and do something if it happens maybe duplicate last send input
+            entity.applyinput(packet)
         }
-        
+    }
+
+    addpacket2buffer(packet:Packet2server){
+        let entity = this.entitys.find(e => e.id == packet.entityid)
+        if(entity == null){
+            entity = new Entity(packet.entityid, packet.relvalue, packet.timestamp)
+            this.entitys.push(entity)
+        }
+        this.packetBuffer.push(packet)
     }
 
     messageClients(){
@@ -86,27 +93,50 @@ class Server{
         this.clients.push(client)
     }
 
-    updateUI(){
-        let tickrate = this.element.querySelector('#tickrate') as HTMLInputElement
-        let vala = this.element.querySelector('#vala') as HTMLInputElement
-        let timestampa = this.element.querySelector('#timestampa') as HTMLInputElement
-        let valb = this.element.querySelector('#valb') as HTMLInputElement
-        let timestampb = this.element.querySelector('#timestampb') as HTMLInputElement
+    generateUI(){
+        this.element.innerHTML = ''
+        this.entitycontainerel = string2html('<div class="border m p"></div>')
+        this.element.append(
+            createnumberinput('tickrate','tickrate'),
+            createnumberinput('packetbuffer','packetbuffer'),
+            createbutton('updateclients','process packets and update clients'),
+            this.entitycontainerel
+        )
+        for(var i = 0; i < this.entitys.length; i++){
+            var entity = this.entitys[i]
+            var container = string2html('<div class="border m p"></div>')
+            var valueel = createnumberinput('val' + i,'val')
+            query(valueel,'#val' + i).valueAsNumber = entity.value
+            var timestampel = createnumberinput('timestamp' + i,'timestamp')
+            timestampel.querySelector('#timestamp' + i)
+            query(timestampel,'#timestamp' + i).valueAsNumber = to(startuptimestamp,entity.lastprocessedInputTimeStamp) / 1000
+            container.append(valueel,timestampel)
+            this.entitycontainerel.append(container)
+        }
+        this.tickrateel = this.element.querySelector('#tickrate')
+        this.packetbufferel = this.element.querySelector('#packetbuffer')
+        this.updateclientsel = this.element.querySelector('#updateclients')
+        this.tickrateel.valueAsNumber = this.tickRateHz
+        this.packetbufferel.valueAsNumber = this.packetBuffer.length
 
-        tickrate.valueAsNumber = this.tickRateHz
-        if(this.entitys[0]){
-            vala.valueAsNumber = this.entitys[0].getPredictedPosition()
-            timestampa.valueAsNumber = formatTime(this.entitys[0].lastprocessedInputTimeStamp)
-        }
-        if(this.entitys[1]){
-            valb.valueAsNumber = this.entitys[1].getPredictedPosition()
-            timestampb.valueAsNumber = formatTime(this.entitys[1].lastprocessedInputTimeStamp)
-        }
+
+        this.element.querySelector('#updateclients').addEventListener('click', () => {
+            server.processPackets()
+            server.messageClients()
+            server.generateUI()
+        })
+
+        
     }
+
 
     
 }
 
 function formatTime(time){
     return to(startuptimestamp, time)
+}
+
+function query(el,id:string){
+    return el.querySelector(id) as HTMLInputElement
 }
